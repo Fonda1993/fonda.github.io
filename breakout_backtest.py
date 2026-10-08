@@ -259,6 +259,8 @@ def main():
     ap.add_argument("--cost", type=float, default=44)
     ap.add_argument("--cost-per", choices=["fill", "round"], default="fill",
                     help="fill=每次成交收 --cost(來回 2 次);round=每個來回收 --cost")
+    ap.add_argument("--start", help="只統計此日期(含)之後的交易,如 2014-05-16;R 仍用更早的資料")
+    ap.add_argument("--end", help="只統計此日期(含)之前的交易")
     ap.add_argument("--out", default="trades.csv")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
@@ -268,6 +270,11 @@ def main():
         ap.error("請提供 CSV 路徑")
     df = load(a.csv, a.dt_col, a.open_col, a.high_col, a.low_col, a.close_col, a.label)
     t = backtest(df, a.cost, a.cost_per)
+    if not t.empty:
+        if a.start:
+            t = t[t["date"] >= pd.to_datetime(a.start).date()]
+        if a.end:
+            t = t[t["date"] <= pd.to_datetime(a.end).date()]
     t.to_csv(a.out, index=False)
     print(summarize(t))
     print(f"逐筆明細:{a.out}")
