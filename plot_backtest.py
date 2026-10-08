@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import FuncFormatter
 
 INK, INK2, GRID, SURF = "#0b0b0b", "#52514e", "#e6e5e1", "#fcfcfb"
 BLUE, ORANGE = "#2a78d6", "#eb6834"
@@ -25,6 +26,7 @@ def style(ax):
     ax.grid(axis="y", color=GRID, lw=0.8)
     ax.set_axisbelow(True)
     ax.tick_params(length=0)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.0f}"))
 
 
 def main():

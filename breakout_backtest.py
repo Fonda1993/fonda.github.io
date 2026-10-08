@@ -167,7 +167,7 @@ def load(path, dt_col, o_col, h_col, l_col, c_col, label="end"):
     return out
 
 
-def backtest(df, cost, cost_per="fill"):
+def backtest(df, cost, cost_per="fill", point_value=POINT_VALUE):
     days = sorted(df["date"].unique())
     by_day = {d: g for d, g in df.groupby("date")}
     rows = []
@@ -189,7 +189,7 @@ def backtest(df, cost, cost_per="fill"):
             tr["R"] = r
             fills = 2
             tr["cost"] = cost * fills if cost_per == "fill" else cost
-            tr["pnl"] = tr["points"] * POINT_VALUE - tr["cost"]
+            tr["pnl"] = tr["points"] * point_value - tr["cost"]
             rows.append(tr)
     if warn_open:
         print(f"[警告] {warn_open} 天第一根 K 棒不是 08:45,開盤價以第一根為準", file=sys.stderr)
@@ -254,6 +254,8 @@ def main():
     ap.add_argument("--high-col", default="high")
     ap.add_argument("--low-col", default="low")
     ap.add_argument("--close-col", default="close")
+    ap.add_argument("--point-value", type=float, default=POINT_VALUE,
+                    help="每點價值:微台 10(預設)、台指期 200")
     ap.add_argument("--label", choices=["end", "start"], default="end",
                     help="K 棒時間戳是結束時間(預設,你的資料屬此)或開始時間")
     ap.add_argument("--cost", type=float, default=44)
@@ -269,7 +271,7 @@ def main():
     if not a.csv:
         ap.error("請提供 CSV 路徑")
     df = load(a.csv, a.dt_col, a.open_col, a.high_col, a.low_col, a.close_col, a.label)
-    t = backtest(df, a.cost, a.cost_per)
+    t = backtest(df, a.cost, a.cost_per, a.point_value)
     if not t.empty:
         if a.start:
             t = t[t["date"] >= pd.to_datetime(a.start).date()]
