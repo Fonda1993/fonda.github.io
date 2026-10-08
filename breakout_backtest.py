@@ -8,7 +8,7 @@
 預設假設(尚未經使用者確認,見 ASSUMPTIONS):
  A1 成本 44 元 = 每次成交(進場或出場各一次),一個來回 88 元 (--cost-per round 可改)
  A2 R 用前一交易日(資料中的上一個日盤)的日盤高低;月結算日雖不交易,仍當作前一日
- A3 K 棒時間戳 = K 棒開始時間;K 棒 O/H/L/C 內部走勢假設:
+ A3 K 棒時間戳預設視為結束時間(--label),內部轉成開始時間;K 棒 O/H/L/C 內部走勢假設:
         收>=開: O -> L -> H -> C ;收<開: O -> H -> L -> C
  A4 開盤價 = 當日第一根日盤 K 棒的開盤價
  A5 進場價、停損價皆成交在線上;進場(含反手)那根 K 棒不檢查停損
@@ -143,7 +143,7 @@ def _fmt_time(col):
     return z
 
 
-def load(path, dt_col, o_col, h_col, l_col, c_col):
+def load(path, dt_col, o_col, h_col, l_col, c_col, label="end"):
     df = pd.read_csv(path)
     df.columns = [str(x).strip().lower() for x in df.columns]
     if dt_col.lower() in df.columns:
@@ -159,6 +159,8 @@ def load(path, dt_col, o_col, h_col, l_col, c_col):
         "l": df[l_col.lower()].astype(float),
         "c": df[c_col.lower()].astype(float),
     }).sort_values("ts")
+    if label == "end":   # 時間戳是 K 棒結束時間(08:46 這根涵蓋 08:45~08:46)-> 轉成開始時間
+        out["ts"] = out["ts"] - pd.Timedelta(minutes=1)
     out["date"] = out["ts"].dt.date
     out["time"] = out["ts"].dt.time
     out = out[(out["time"] >= SESSION_START) & (out["time"] < SESSION_END)]
@@ -252,6 +254,8 @@ def main():
     ap.add_argument("--high-col", default="high")
     ap.add_argument("--low-col", default="low")
     ap.add_argument("--close-col", default="close")
+    ap.add_argument("--label", choices=["end", "start"], default="end",
+                    help="K 棒時間戳是結束時間(預設,你的資料屬此)或開始時間")
     ap.add_argument("--cost", type=float, default=44)
     ap.add_argument("--cost-per", choices=["fill", "round"], default="fill",
                     help="fill=每次成交收 --cost(來回 2 次);round=每個來回收 --cost")
@@ -262,7 +266,7 @@ def main():
         return selftest()
     if not a.csv:
         ap.error("請提供 CSV 路徑")
-    df = load(a.csv, a.dt_col, a.open_col, a.high_col, a.low_col, a.close_col)
+    df = load(a.csv, a.dt_col, a.open_col, a.high_col, a.low_col, a.close_col, a.label)
     t = backtest(df, a.cost, a.cost_per)
     t.to_csv(a.out, index=False)
     print(summarize(t))
