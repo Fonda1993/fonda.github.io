@@ -128,13 +128,28 @@ def run_day(bars, o_price, r):
     return trades
 
 
+def _fmt_date(col):
+    """支援 2024-01-02 / 2024/01/02 / 20240102。"""
+    s = col.astype(str).str.strip()
+    return s.str.replace(r"^(\d{4})(\d{2})(\d{2})$", r"\1-\2-\3", regex=True).str.replace("/", "-")
+
+
+def _fmt_time(col):
+    """支援 08:45 / 08:45:00 / 845 / 84500 / 084500。"""
+    s = col.astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+    digits = s.str.fullmatch(r"\d+")
+    z = s.where(~digits, s.str.zfill(6).where(s.str.len() > 4, s.str.zfill(4) + "00"))
+    z = z.where(~digits, z.str[0:2] + ":" + z.str[2:4] + ":" + z.str[4:6])
+    return z
+
+
 def load(path, dt_col, o_col, h_col, l_col, c_col):
     df = pd.read_csv(path)
     df.columns = [str(x).strip().lower() for x in df.columns]
     if dt_col.lower() in df.columns:
         ts = pd.to_datetime(df[dt_col.lower()])
     elif "date" in df.columns and "time" in df.columns:
-        ts = pd.to_datetime(df["date"].astype(str) + " " + df["time"].astype(str))
+        ts = pd.to_datetime(_fmt_date(df["date"]) + " " + _fmt_time(df["time"]))
     else:
         sys.exit(f"找不到時間欄位 {dt_col!r}(或 date+time);現有欄位:{list(df.columns)}")
     out = pd.DataFrame({
